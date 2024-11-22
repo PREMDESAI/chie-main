@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "declaration": true,
+    "declarationDir": "types",
+    "baseUrl": "src",
+    "paths": {
+      "chie": ["exports/chie"]
+    },
+    "outDir": "dist",
+    "allowJs": true,
+    "module": "commonjs",
+    "esModuleInterop": true,
+    "target": "es2022",
+    "lib": ["es2022", "dom"]
+  },
+  "include": ["src/**/*"]
+}

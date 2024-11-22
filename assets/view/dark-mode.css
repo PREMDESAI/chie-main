@@ -1,0 +1,73 @@
+body {
+  background: <%= style.dark.bgColor %>;
+  color: white;
+}
+a, a:link, a:visited {
+  color: #1D9BD1;
+}
+#pending {
+  background: #302E27;
+}
+.action-menu {
+  background: <%= style.dark.bgColor %>;
+  border-color: rgba(232, 232, 232, 0.13);
+}
+a.icon {
+  color: #BBB;
+}
+a.icon:hover {
+  color: white;
+}
+.msg.role-assistant {
+  background: #222529;
+}
+.msg .sender .time {
+  color: #ABABAD;
+}
+.steps {
+  color: #616061;
+}
+.text .error {
+  color: #FF4D4F;
+}
+.text .edited.label {
+  color: #818385;
+}
+.text blockquote {
+  background-color: #151515;
+  border-color: #565656;
+  color: #BEBEBE;
+}
+.text .code-block, .text code {
+  background: rgba(232, 232, 232, 0.04);
+  border-color: rgba(232, 232, 232, 0.13);
+}
+.text .code-block {
+  color: #D1D2D3;
+}
+.text code {
+  color: #E8912D;
+}
+.text .code-block .toolbar {
+  background: rgba(232, 232, 232, 0.08);
+}
+.text .code-block .toolbar span {
+  color: #999;
+}
+.text table, .text th, .text td {
+  border-color: #666;
+}
+#replies button {
+  color: #D1D2D3;
+  border-color: #D1D2D33D;
+  background: #1A1D21;
+}
+#replies button:hover {
+  background: #515457;
+}
+#replies button.attention {
+  border-color: #00c999;
+}
+#replies button.attention:hover {
+  background: #008F6A;
+}

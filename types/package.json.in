@@ -1,0 +1,9 @@
+{
+  "name": "chie",
+  "version": "",
+  "types": "./exports/chie.d.ts",
+  "dependencies": {
+    "gui": "",
+    "typed-signals": ""
+  }
+}

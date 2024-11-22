@@ -1,0 +1,138 @@
+name: build
+
+on: push
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    continue-on-error: false
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-2022, macos-12]
+        arch: [x64]
+        include:
+          - os: windows-2022
+            arch: ia32
+          - os: macos-12
+            arch: arm64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set package version
+        shell: bash
+        run: |
+          # Set the version field in package.json to git tag name.
+          npm config set git-tag-version=false
+          npm version $(git describe --tags) || true
+          # Use production icons.
+          npm pkg set 'build.icons.mac'='assets/build/icon.icns'
+          npm pkg set 'build.icons.win'='assets/build/icon.ico'
+
+      - name: Build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -e
+          npm install
+          npm publish --dry-run
+
+      - name: Start xvfb
+        if: startsWith(matrix.os, 'ubuntu') && matrix.arch == 'x64'
+        run: |
+          sudo apt update
+          sudo apt install -y libwebkit2gtk-4.0-dev
+          /usr/bin/Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+
+      - name: Test
+        if: matrix.arch == 'x64'
+        shell: bash
+        env:
+          DISPLAY: ':99.0'
+        run: |
+          set -e
+          npm run lint
+          npm run test
+          npm run test-ui
+
+      - name: Create Distribution
+        if: ${{ !(startsWith(matrix.os, 'macos') && startsWith(github.ref, 'refs/tags/')) }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run dist -- --arch ${{ matrix.arch }}
+
+      - name: Install the Apple Certificate
+        if: ${{ startsWith(matrix.os, 'macos') && startsWith(github.ref, 'refs/tags/') }}
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          # Create variables.
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          # Import certificate from secrets.
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+
+          # Create temporary keychain.
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # Import certificate to keychain.
+          security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+      - name: Create App Bundle
+        if: ${{ startsWith(matrix.os, 'macos') && startsWith(github.ref, 'refs/tags/') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: npm run build -- --arch ${{ matrix.arch }} --identity "$APPLE_TEAM_ID"
+
+      - name: Notarize Build
+        if: ${{ startsWith(matrix.os, 'macos') && startsWith(github.ref, 'refs/tags/') }}
+        uses: lando/notarize-action@v2
+        with:
+          product-path: out/Chie.app
+          appstore-connect-username: ${{ secrets.APPLE_ID }}
+          appstore-connect-password: ${{ secrets.APPLE_PASSWORD }}
+          appstore-connect-team-id: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Create Distribution (macOS)
+        if: ${{ startsWith(matrix.os, 'macos') && startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          VERSION=`node -e "process.stdout.write(require('./package.json').version)"`
+          xcrun stapler staple out/Chie.app
+          ditto -c -k out chieapp-v$VERSION-darwin-${{ matrix.arch }}.zip
+
+      - name: Upload Binary Files
+        uses: actions/upload-artifact@v3
+        with:
+          path: '*.zip'
+          retention-days: 1
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      # Needed by action-gh-release.
+      contents: write
+
+    steps:
+      - name: Download Files
+        uses: actions/download-artifact@v3
+
+      - name: Release
+        uses: softprops/action-gh-release@v0.1.14
+        with:
+          draft: true
+          name: Chie ${{ github.ref_name }}
+          body: '## Changelog'
+          files: artifact/*.zip

@@ -1,0 +1,40 @@
+<div <% if (message.pending) { %> id="pending" <% } %> class="msg role-<%= message.role.toLowerCase() %>" message-index=<%= message.index %>>
+  <div class="avatar">
+  <% if (message.avatar) { %>
+    <img src="<%= message.avatar %>"/>
+  <% } else { %>
+    <div class="dummy"></div>
+  <% } %>
+  </div>
+  <div class="content">
+    <div class="action-menu">
+    <% if (message.canEdit) { %>
+      <a class="icon" href="#show-text-at" title="Edit"><i class="icon-edit"></i></a>
+    <%   if (message.role == 'Assistant') { %>
+      <a class="icon" href="#regenerate-from" title="Regenerate"><i class="icon-refresh"></i></a>
+    <%   } %>
+    <% } else if (message.role == 'Assistant') { %>
+      <a class="icon" href="#show-text-at" title="Show raw text"><i class="icon-text"></i></a>
+    <% } %>
+      <a class="icon" href="#copy-text-at" title="Copy text"><i class="icon-copy"></i></a>
+    </div>
+    <div class="sender">
+      <div class="name"><%= message.sender %></div>
+    </div>
+    <div class="steps">
+    <% if (message.steps) { %>
+    <% for (const step of message.steps) { %>
+      <p><%= step %></p>
+    <% } %>
+    <% } %>
+    </div>
+    <% if (message.pending) { %>
+      <img id="loader" src="chie://app-file/assets/icons/typing.gif"/>
+    <% } %>
+    <div class="text">
+    <% if (message.content) { %>
+      <%- message.content %>
+    <% } %>
+    </div>
+  </div>
+</div>
